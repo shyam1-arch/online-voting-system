@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <h2>VoteGuard</h2>
+    <div class="nav-links" id="navLinks"></div>
+  </nav>
+
+  <div class="container">
+    <div class="section-header" style="text-align:left; margin-bottom: 12px;">
+      <h2 id="dashboardTitle">Dashboard</h2>
+      <p id="userInfo"></p>
+    </div>
+
+    <div class="stats" id="statsSection"></div>
+
+    <section class="section">
+      <div class="grid-4" id="cardsSection"></div>
+    </section>
+
+    <section class="section" id="adminApprovalSection" style="display:none;">
+      <div class="section-header" style="text-align:left;">
+        <h2>Verification Requests</h2>
+        <p>Approve or reject voter documents from here.</p>
+      </div>
+
+      <div id="requestList"></div>
+    </section>
+
+    <section class="section" id="voterStatusSection" style="display:none;">
+      <div class="section-header" style="text-align:left;">
+        <h2>Verification Status</h2>
+        <p>Track whether your uploaded document has been approved or rejected.</p>
+      </div>
+
+      <div id="voterStatusBox"></div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    const user = getUser();
+
+    if (!user) {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("userInfo").textContent =
+      `Logged in as ${user.fullName} (${user.role})`;
+
+    if (user.role === "admin") {
+      renderAdminDashboard();
+      loadRequests();
+    } else {
+      renderVoterDashboard();
+      loadVoterStatus();
+    }
+
+    function renderAdminDashboard() {
+      document.getElementById("dashboardTitle").textContent = "Admin Dashboard";
+
+      document.getElementById("navLinks").innerHTML = `
+        <a href="dashboard.html">Dashboard</a>
+        <a href="create-poll.html">Create Poll</a>
+        <a href="results.html">Results</a>
+        <a href="#" onclick="logout()">Logout</a>
+      `;
+
+      document.getElementById("statsSection").innerHTML = `
+        <div class="stat-card">
+          <h3>Poll Management</h3>
+          <p>Admin</p>
+        </div>
+        <div class="stat-card">
+          <h3>Verification Review</h3>
+          <p>Live</p>
+        </div>
+        <div class="stat-card">
+          <h3>Results Access</h3>
+          <p>Enabled</p>
+        </div>
+        <div class="stat-card">
+          <h3>Logs</h3>
+          <p>Tracked</p>
+        </div>
+      `;
+
+      document.getElementById("cardsSection").innerHTML = `
+        <div class="card">
+          <div class="icon-box">A</div>
+          <h3>Create Poll</h3>
+          <p>Create a new election, add options, and prepare the ballot.</p>
+          <br />
+          <a class="btn btn-primary" href="create-poll.html">Open</a>
+        </div>
+
+        <div class="card">
+          <div class="icon-box">B</div>
+          <h3>View Results</h3>
+          <p>Review the latest election outcome and vote distribution.</p>
+          <br />
+          <a class="btn btn-primary" href="results.html">Open</a>
+        </div>
+      `;
+
+      document.getElementById("adminApprovalSection").style.display = "block";
+    }
+
+    function renderVoterDashboard() {
+      document.getElementById("dashboardTitle").textContent = "Voter Dashboard";
+
+      document.getElementById("navLinks").innerHTML = `
+        <a href="dashboard.html">Dashboard</a>
+        <a href="upload-document.html">Upload Document</a>
+        <a href="vote.html">Vote</a>
+        <a href="results.html">Results</a>
+        <a href="#" onclick="logout()">Logout</a>
+      `;
+
+      document.getElementById("statsSection").innerHTML = `
+        <div class="stat-card">
+          <h3>Account Role</h3>
+          <p>Voter</p>
+        </div>
+        <div class="stat-card">
+          <h3>Document</h3>
+          <p>Required</p>
+        </div>
+        <div class="stat-card">
+          <h3>Voting Access</h3>
+          <p>Token Based</p>
+        </div>
+        <div class="stat-card">
+          <h3>Status</h3>
+          <p>Trackable</p>
+        </div>
+      `;
+
+      document.getElementById("cardsSection").innerHTML = `
+        <div class="card">
+          <div class="icon-box">A</div>
+          <h3>Upload Document</h3>
+          <p>Submit your Voter ID or National ID for approval.</p>
+          <br />
+          <a class="btn btn-primary" href="upload-document.html">Open</a>
+        </div>
+
+        <div class="card">
+          <div class="icon-box">B</div>
+          <h3>Vote</h3>
+          <p>Use your secure one-time token to cast your ballot.</p>
+          <br />
+          <a class="btn btn-primary" href="vote.html">Open</a>
+        </div>
+
+        <div class="card">
+          <div class="icon-box">C</div>
+          <h3>Results</h3>
+          <p>View election outcomes after votes are counted.</p>
+          <br />
+          <a class="btn btn-primary" href="results.html">Open</a>
+        </div>
+      `;
+
+      document.getElementById("voterStatusSection").style.display = "block";
+    }
+
+    async function loadRequests() {
+      try {
+        const response = await fetch("http://127.0.0.1:3000/api/verification");
+        const data = await response.json();
+
+        const requestList = document.getElementById("requestList");
+        requestList.innerHTML = "";
+
+        data.forEach((req) => {
+          const fileUrl = `http://127.0.0.1:3000/${req.documentPath.replace(/\\\\/g, "/")}`;
+
+          const div = document.createElement("div");
+          div.className = "card";
+          div.style.marginBottom = "16px";
+
+          div.innerHTML = `
+            <h3>${req.userId?.fullName || "Unknown User"}</h3>
+            <p><strong>Email:</strong> ${req.userId?.email || "-"}</p>
+            <p><strong>Document Type:</strong> ${req.documentType || "-"}</p>
+            <p><strong>Status:</strong> ${req.status}</p>
+            <p><strong>Document:</strong> <a href="${fileUrl}" target="_blank">View Uploaded Document</a></p>
+            <br />
+            <button onclick="approveRequest('${req._id}')">Approve</button>
+            <button style="margin-left:10px; background:#991b1b;" onclick="rejectRequest('${req._id}')">Reject</button>
+          `;
+
+          requestList.appendChild(div);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function approveRequest(id) {
+      try {
+        const response = await fetch(`http://127.0.0.1:3000/api/verification/approve/${id}`, {
+          method: "PUT"
+        });
+
+        const data = await response.json();
+        alert(data.message);
+        loadRequests();
+      } catch (error) {
+        alert("Approval failed");
+      }
+    }
+
+    async function rejectRequest(id) {
+      try {
+        const response = await fetch(`http://127.0.0.1:3000/api/verification/reject/${id}`, {
+          method: "PUT"
+        });
+
+        const data = await response.json();
+        alert(data.message);
+        loadRequests();
+      } catch (error) {
+        alert("Rejection failed");
+      }
+    }
+
+    async function loadVoterStatus() {
+      try {
+        const response = await fetch("http://127.0.0.1:3000/api/verification");
+        const data = await response.json();
+
+        const myRequest = data.find((item) => item.userId && item.userId._id === user.id);
+        const box = document.getElementById("voterStatusBox");
+
+        if (!myRequest) {
+          box.innerHTML = `
+            <div class="card">
+              <h3>No document uploaded yet</h3>
+              <p>Please upload your document to begin verification.</p>
+            </div>
+          `;
+          return;
+        }
+
+        let statusClass = "message";
+        let statusText = myRequest.status;
+
+        if (myRequest.status === "approved") {
+          statusClass += " success";
+          statusText = "Your document has been approved. You are now verified.";
+        } else if (myRequest.status === "rejected") {
+          statusClass += " error";
+          statusText = "Your document was rejected. Please upload a valid document again.";
+        } else {
+          statusClass += " success";
+          statusText = "Your document is under review.";
+        }
+
+        box.innerHTML = `
+          <div class="card">
+            <p><strong>Document Type:</strong> ${myRequest.documentType || "-"}</p>
+            <p><strong>Status:</strong> ${myRequest.status}</p>
+            <div class="${statusClass}" style="margin-top:12px;">${statusText}</div>
+          </div>
+        `;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>

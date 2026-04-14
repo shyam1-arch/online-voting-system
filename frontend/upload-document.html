@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload Document</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <h2>VoteGuard</h2>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="upload-document.html">Upload Document</a>
+      <a href="vote.html">Vote</a>
+      <a href="results.html">Results</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="form-card">
+      <div class="section-header">
+        <div class="hero-badge">Verification Center</div>
+        <h2>Upload your verification document</h2>
+        <p>Submit a valid identity document before voting access is granted.</p>
+      </div>
+
+      <form id="uploadForm">
+        <select id="documentType" required>
+          <option value="">Select Document Type</option>
+          <option value="Voter ID">Voter ID</option>
+          <option value="National ID">National ID</option>
+        </select>
+
+        <input type="file" id="document" required />
+        <button type="submit">Upload Document</button>
+        <div id="uploadMessage"></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const user = getUser();
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      const file = document.getElementById("document").files[0];
+      const documentType = document.getElementById("documentType").value;
+
+      const formData = new FormData();
+      formData.append("userId", user.id);
+      formData.append("documentType", documentType);
+      formData.append("document", file);
+
+      try {
+        const response = await fetch("http://127.0.0.1:3000/api/verification/upload", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message);
+
+        showMessage("uploadMessage", "Document uploaded successfully", "success");
+      } catch (error) {
+        showMessage("uploadMessage", error.message, "error");
+      }
+    });
+  </script>
+</body>
+</html>

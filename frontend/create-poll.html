@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Poll</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav>
+    <h2>VoteGuard</h2>
+    <div class="nav-links">
+      <a href="dashboard.html">Dashboard</a>
+      <a href="upload-document.html">Upload Document</a>
+      <a href="create-poll.html">Create Poll</a>
+      <a href="vote.html">Vote</a>
+      <a href="results.html">Results</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="form-card">
+      <div class="section-header">
+        <div class="hero-badge">Election Setup</div>
+        <h2>Create a new poll</h2>
+        <p>Create an election, define the time window, and add ballot options.</p>
+      </div>
+
+      <form id="pollForm">
+        <input type="text" id="title" placeholder="Poll Title" required />
+        <textarea id="description" placeholder="Description"></textarea>
+        <input type="datetime-local" id="startAt" />
+        <input type="datetime-local" id="endAt" />
+        <button type="submit">Create Poll</button>
+        <div id="pollMessage"></div>
+      </form>
+
+      <div class="card" style="margin-top: 20px;">
+        <h3>Add Options</h3>
+        <input type="text" id="optionText" placeholder="Option text" />
+        <button onclick="addOption()">Add Option</button>
+        <ul id="optionList" style="margin-top: 14px;"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    let pollId = null;
+
+    document.getElementById("pollForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const user = getUser();
+
+      try {
+        const data = await apiRequest("/polls", "POST", {
+          title: document.getElementById("title").value,
+          description: document.getElementById("description").value,
+          createdBy: user.id,
+          startAt: document.getElementById("startAt").value,
+          endAt: document.getElementById("endAt").value
+        });
+
+        pollId = data.poll._id;
+        showMessage("pollMessage", "Poll created. Now add options.", "success");
+      } catch (error) {
+        showMessage("pollMessage", error.message, "error");
+      }
+    });
+
+    async function addOption() {
+      if (!pollId) {
+        alert("Create poll first!");
+        return;
+      }
+
+      const text = document.getElementById("optionText").value.trim();
+      if (!text) return;
+
+      try {
+        await apiRequest("/polls/option", "POST", {
+          pollId,
+          optionText: text
+        });
+
+        const li = document.createElement("li");
+        li.textContent = text;
+        document.getElementById("optionList").appendChild(li);
+        document.getElementById("optionText").value = "";
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  </script>
+</body>
+</html>
